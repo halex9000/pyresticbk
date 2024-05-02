@@ -12,21 +12,12 @@
 #                  forget --keep-daily 10 --keep-weekly 4 --keep-monthly 6 --prune
 ########################################################################################
 
-"""
-
-shlex.split() è utilizzato per dividere la stringa di comando in una lista tenendo conto delle regole 
-della shell Unix, come la gestione corretta delle virgolette e degli spazi. 
-Questo rende shlex.split ideale per preparare comandi da eseguire con subprocess.
-
-"""
-
 import os
 import sys
 import platform
 import subprocess
 import csv
 import shlex
-
 
 def ResticCommand(RESTIC_EXE,PATH_SRC,PATH_DST,command):
     command = [RESTIC_EXE, "-r", PATH_DST, command, PATH_SRC]
