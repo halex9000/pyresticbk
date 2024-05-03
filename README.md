@@ -14,7 +14,7 @@ actions:
   - clean
 
 
-## file_config
+### file_config
 plain text csv example:
 
 ```
@@ -36,20 +36,20 @@ ENV_RESTIC_PASSWORD use environment RESTIC_PASSWORD
 
 Examples: 
 
-### Start backup all lines inside myfile_config
+#### Start backup all lines inside myfile_config
 
 ```
 python pyResticBK.py myfile_config backup
 ```
-### Show snapshots and stats for all repository inside myfile_config
+#### Show snapshots and stats for all repository inside myfile_config
 
 ```
 python pyResticBK.py myfile_config status
 ```
-### Clean repository using retention policy inside myfile_config
+#### Clean repository using retention policy inside myfile_config
 
 ```
 python pyResticBK.py myfile_config clean
 ```
 
-```
+
