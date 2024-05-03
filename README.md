@@ -1,12 +1,12 @@
 # pyResticBK
 Python script to automate Restic Backup 
 
-## pyresticbk.py
+## pyResticBK.py
 Download 
 [Restic](https://restic.net/ )
 
 Usage:
-python pyresticbk.py file_config action
+python pyResticBK.py file_config action
 
 actions:
   - backup
@@ -18,14 +18,17 @@ actions:
 plain text csv example:
 
 ```
-# config variables 
+# config_file format
+#
+# path_source[0];path_dest[1];retention[2]
+#
+# Config Section
 config;restic_win=c:\bin\restic.exe
-config;restic_linux=/usr/sbin/restic
+config;restic_linux=/usr/bin/restic
 config;password=ENV_RESTIC_PASSWORD
-
-#path_source;path_destination;retention
-c:\\users\\myuser;s:\\restic_bak\\myuser;--keep-daily 7 --keep-weekly 4 --keep-monthly 1
-c:\\laragon\\;s:\\restic_bak\\laragon;--keep-daily 5 --keep-weekly 4 --keep-monthly 6
+# Repository Section
+c:\\users\\halex;s:\\restic_bak\\halex;--keep-daily 7 --keep-weekly 4 --keep-monthly 1
+c:\\laragon;s:\\restic_bak\\laragon;--keep-daily 7 --keep-weekly 4 --keep-monthly 1
 
 ```
 
@@ -36,17 +39,17 @@ Examples:
 ### Start backup all lines inside myfile_config
 
 ```
-python pyresticbk.py myfile_config backup
+python pyResticBK.py myfile_config backup
 ```
 ### Show snapshots and stats for all repository inside myfile_config
 
 ```
-python pyresticbk.py myfile_config status
+python pyResticBK.py myfile_config status
 ```
 ### Clean repository using retention policy inside myfile_config
 
 ```
-python pyresticbk.py myfile_config clean
+python pyResticBK.py myfile_config clean
 ```
 
 ```
