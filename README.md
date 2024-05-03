@@ -13,7 +13,6 @@ actions:
   - status
   - clean
 
-
 ### file_config
 plain text csv example:
 
