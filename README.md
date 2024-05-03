@@ -1,4 +1,4 @@
-# pyresticbk
+# pyResticBK
 Python script to automate Restic Backup 
 
 ## pyresticbk.py
