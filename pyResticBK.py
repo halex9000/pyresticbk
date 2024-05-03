@@ -5,9 +5,9 @@ PROGRAM = "pyResticBK.py"
 VERSION = "1.2405b"
 #    Note: Automate restic backup using a config file
 #
-#  params: backup = backups all files to repositories listed into config file
-#          status = check integrity and shows all id snapshots
-#          clean = set policy retention, for example:
+#  params: backup = Start backup all lines inside myfile_config
+#          status = Show snapshots and stats for all repository inside myfile_config
+#          clean =  Clean repository using retention policy inside myfile_config. Example:
 #                  --keep-daily 10 --keep-weekly 4 --keep-monthly 6
 #####################################################################################################
 #
