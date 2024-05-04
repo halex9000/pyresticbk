@@ -2,7 +2,7 @@
 PROGRAM = "pyResticBK.py"
 #  Author: Alessandro Carichini 
 #    Date: 03-05-2024
-VERSION = "1.2405b"
+VERSION = "1.2405c"
 #    Note: Automate restic backup using a config file
 #
 #  params: backup = Start backup all lines inside myfile_config
@@ -18,6 +18,19 @@ import platform
 import subprocess
 import csv
 import shlex
+import json
+from datetime import datetime
+
+#####################################################################################################
+def WriteLogFile(filename,buffer=None):
+    date_obj = datetime.now()
+    log_date = date_obj.strftime("%Y-%m-%d %H:%M.%S")
+    if buffer is None:
+        fhandle = open(filename, 'w+')
+        return fhandle
+    else:
+        filename.write(f"{log_date};{buffer}\n")
+        return None
 
 def ResticExec(restic_bin, path_src, path_repo, param_string):
     command_list = shlex.split(param_string)
@@ -30,16 +43,17 @@ def ResticExec(restic_bin, path_src, path_repo, param_string):
 
     try:
         result = subprocess.run(command, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if command_list[0] == "backup":
-            return True
-        else:
-            return result.stdout
+        return result.stdout
     except subprocess.CalledProcessError as e:
-        if command_list[0] == "backup":
-            return False
-        else:
-            print("Error:", e.stderr)
-            return None
+        return "error: "+e.stderr
+
+def GetDirSize(directory):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(directory):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            total_size += os.path.getsize(fp)
+    return total_size / (1024 ** 3)
 
 #####################################################################################################
 
@@ -49,19 +63,27 @@ if len(sys.argv) < 3:
     print(f"Usage: {PROGRAM} file_config backup|status|clean")
     sys.exit(1)
 else:
+    date_obj = datetime.now()
+    log_date = date_obj.strftime("%Y%m%d")
     FILE_CONFIG = sys.argv[1]
+    FILE_LOG = log_date+"_"+os.path.splitext(os.path.basename(FILE_CONFIG))[0]+".log"
     PARAM = sys.argv[2].upper()
     OS = platform.system()
 
     print(f"{PROGRAM}: {PARAM} - Platform: {OS} - rel.{VERSION}")
     print(f"reading: {FILE_CONFIG}")
 
+    # Create log file
+    flog = WriteLogFile(FILE_LOG)
+
     if os.path.isfile(FILE_CONFIG):
         with open(FILE_CONFIG, newline='', encoding='utf-8', ) as csvfile:
             reader = csv.reader(csvfile,delimiter=";")
             for row in reader:
                 if row:  
+                    # Skip comments #
                     if row[0][0] != '#':
+                        # Get config vars
                         if row[0].strip().lower() == "config":
                             key_value = row[1].split('=')
                             if len(key_value) == 2:
@@ -75,6 +97,7 @@ else:
                             except:
                                 RETENTION = None
 
+                            # Check Platform
                             if OS == "Windows":
                                 RESTIC_EXE = config_dict["restic_win"]
                                 SLASH = "\\"
@@ -82,34 +105,39 @@ else:
                                 RESTIC_EXE = config_dict["restic_linux"]
                                 SLASH = "/"
 
-                            print(f"REPO: {PATH_REPO}")
-                            
+                            head_log = f"{PARAM};{PATH_REPO}"
+
+                            # Init Repository and check PATH_SRC exist
                             if not os.path.isfile(PATH_REPO+SLASH+"config"):
                                 if os.path.isdir(PATH_SRC):
-                                    print(f"INIT REPO {PATH_REPO}")
+                                    WriteLogFile(flog,f"{head_log};INIT")
                                     result = ResticExec(RESTIC_EXE,PATH_SRC,PATH_REPO,"init")
-                                    print(result)
                                 else:
-                                    print(f"NO SOURCE {PATH_SRC}")
+                                    result = f"NO SOURCE {PATH_SRC}"
 
-                            if PARAM == 'BACKUP':
-                                if os.path.isfile(PATH_REPO+SLASH+"config"):
+                                WriteLogFile(flog,f"{head_log};{result}")
+
+                            # Action if Repository exist
+                            if os.path.isfile(PATH_REPO+SLASH+"config"):
+                                if PARAM == 'BACKUP':
                                     result = ResticExec(RESTIC_EXE,PATH_SRC,PATH_REPO,"backup")
-                                    if result:
-                                        print(f"OK BACKUP {PATH_SRC}")
-                                    else:
-                                        print(f"ERROR! BACKUP {PATH_SRC}")
-                            elif PARAM == 'STATUS':
-                                if os.path.isfile(PATH_REPO+SLASH+"config"):
-                                    result1 = ResticExec(RESTIC_EXE,PATH_SRC,PATH_REPO,"snapshots")
-                                    result2 = ResticExec(RESTIC_EXE,PATH_SRC,PATH_REPO,"stats")
-                                    print(result1)
-                                    print(result2)
-                            elif PARAM == 'CLEAN':
-                                if RETENTION:
-                                    if os.path.isfile(PATH_REPO+SLASH+"config"):
-                                        result = ResticExec(RESTIC_EXE,PATH_SRC,PATH_REPO,"forget "+RETENTION+" --prune")
-                                        print(result)
+                                    WriteLogFile(flog,f"{head_log};{result}")
+                                elif PARAM == 'STATUS':
+                                    json_result = ResticExec(RESTIC_EXE,PATH_SRC,PATH_REPO,"snapshots --json")
+                                    snapshots = json.loads(json_result)
+                                    for snapshot in snapshots:
+                                        snapshot_id = snapshot["short_id"]
+                                        date_obj = datetime.fromisoformat(snapshot["time"])
+                                        snapshot_date = date_obj.strftime("%d-%m-%Y %H:%M")
+                                        WriteLogFile(flog,f"{head_log};SNAPSHOT: {snapshot_id} = {snapshot_date}")
 
+                                    size_gb = GetDirSize(PATH_REPO)
+                                    WriteLogFile(flog,f"{head_log};SIZE GB: {size_gb:.2f}")
+                                elif PARAM == 'CLEAN':
+                                    if RETENTION:
+                                        result = ResticExec(RESTIC_EXE,PATH_SRC,PATH_REPO,"forget "+RETENTION+" --prune")
+                                        WriteLogFile(flog,f"{head_log};{result}")
+        flog.close()
+        print(f"FileLog: {FILE_LOG}")
     else:
         print(f"Config file {FILE_CONFIG} not found!")
