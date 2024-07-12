@@ -2,8 +2,8 @@
 PROGRAM = "pyResticBK.py"
 #  Author: Alessandro Carichini 
 #    Date: 02-05-2024
-#  Update: 06-05-2024
-VERSION = "1.2405_10a"
+#  Update: 12-07-2024
+VERSION = "1.2407a"
 #    Note: Automate restic backup using a config file
 #
 #  params: backup = Start backup all lines inside myfile_config
@@ -33,8 +33,24 @@ import csv
 import shlex
 import json
 from datetime import datetime
+import socket
+import urllib.request
+
+# https://healthchecks.io
+
+# If HC_FLAG = True insert correct URL
+HC_FLAG = False
+TAG_CHECK="https://hc-ping.com/xxxxxxxxxxxxxxxxxxxxxxx"
 
 #####################################################################################################
+def HealthCheck(tag_check):
+    try:
+        urllib.request.urlopen(tag_check, timeout=10)
+    except socket.error as e:
+        return False
+
+    return True
+
 def WriteLogFile(filename,buffer=None):
     date_obj = datetime.now()
     log_date = date_obj.strftime("%Y-%m-%d %H:%M.%S")
@@ -62,14 +78,10 @@ def ResticExec(restic_bin, path_src, path_repo, param_string):
 
 def GetDirSize(directory):
     total_size = 0
-    for dirpath, _, filenames in os.walk(directory):
-        for filename in filenames:
-            fp = os.path.join(dirpath, filename)
-            try:
-                total_size += os.stat(fp).st_size
-            except:
-                total_size += 0
-                
+    for dirpath, dirnames, filenames in os.walk(directory):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            total_size += os.path.getsize(fp)
     return total_size / (1024 ** 3)
 
 #####################################################################################################
@@ -140,15 +152,18 @@ else:
                                 if PARAM == 'BACKUP':
                                     result = ResticExec(RESTIC_EXE,PATH_SRC,PATH_REPO,"backup")
                                     WriteLogFile(flog,f"{head_log};{result}")
+                                    if HC_FLAG:
+                                        HealthCheck(TAG_CHECK)
                                 elif PARAM == 'STATUS':
                                     json_result = ResticExec(RESTIC_EXE,PATH_SRC,PATH_REPO,"snapshots --json")
                                     snapshots = json.loads(json_result)
                                     for snapshot in snapshots:
                                         snapshot_id = snapshot["short_id"]
                                         iso_string = snapshot["time"]
-                                        iso_date = datetime.fromisoformat(iso_string[:19])
-                                        snapshot_date = iso_date.strftime("%d-%m-%Y %H:%M")
-                                        
+                                        truncated_iso_string = iso_string[:26] + iso_string[29:]
+                                        #date_obj = datetime.fromisoformat(snapshot["time"])
+                                        date_obj = datetime.fromisoformat(truncated_iso_string)
+                                        snapshot_date = date_obj.strftime("%d-%m-%Y %H:%M")
                                         WriteLogFile(flog,f"{head_log};SNAPSHOT: {snapshot_id} = {snapshot_date}")
 
                                     size_gb = GetDirSize(PATH_REPO)
@@ -159,5 +174,6 @@ else:
                                         WriteLogFile(flog,f"{head_log};{result}")
         flog.close()
         print(f"FileLog: {FILE_LOG}")
+
     else:
         print(f"Config file {FILE_CONFIG} not found!")
